@@ -23,6 +23,12 @@ ENST_to_hgnc = read_csv(here('data/model_expression_genes.csv'))
 
 average_exp_vals = read_rds(here('data/average_model_exp_vals.rds'))
 
+rand_forest_model = read_rds(here('data/final_model_500feat_100trees.rds'))
+
+klaeger_wide = read_rds(here('data/klaeger_wide.rds')) %>%
+	filter(concentration_M != 0)
+
+
 convert_salmon_to_HGNC_TPM <- function(transript_data) {
 	#look for ENST in the name column
 	if (mean(str_detect(transript_data$Name,"ENST")) > 0.95) {
@@ -47,15 +53,7 @@ make_predictions <- function(processed_RNAseq) {
 	progress <- shiny::Progress$new()
 	# Make sure it closes when we exit this reactive, even if there's an error
 	on.exit(progress$close())
-	
-	
-	
-	klaeger_wide = read_rds(here('data/klaeger_wide.rds')) %>%
-		filter(concentration_M != 0)
-	
-	progress$inc(3/3, detail = "Loading Model File")
-	rand_forest_model = read_rds(here('data/final_model_500feat_100trees.rds'))
-	
+
 	model_data = processed_RNAseq %>% 
 		mutate(model_feature = paste0("exp_",hgnc_symbol), 
 					 trans_TPM = log2(TPM + 1)) %>% 
