@@ -19,23 +19,16 @@ options(shiny.maxRequestSize=30*1024^2)
 
 all_geo_archs_ids = read_rds(here('data/ARCHS_GEO_IDs.rds'))
 
-ENST_to_hgnc = read_csv(here('data/model_expression_genes.csv'))
-
-average_exp_vals = read_rds(here('data/average_model_exp_vals.rds'))
-
-rand_forest_model = read_rds(here('data/final_model_500feat_100trees.rds'))
-
-klaeger_wide = read_rds(here('data/klaeger_wide.rds')) %>%
-	filter(concentration_M != 0)
-
-
 convert_salmon_to_HGNC_TPM <- function(transript_data) {
+	
 	#look for ENST in the name column
 	if (mean(str_detect(transript_data$Name,"ENST")) > 0.95) {
 		#Check for the version dot in the Name column, if there, remove it with separate
 		if (any(str_detect(transript_data$Name, "\\."))) {
 			transript_data = transript_data %>% separate(Name, into = c("Name",NA), sep = "\\.")
 		}
+		
+		ENST_to_hgnc = read_csv(here('data/model_expression_genes.csv'))
 		
 		transript_data = transript_data %>% 
 			filter(Name %in% ENST_to_hgnc$ensembl_transcript_id) %>% 
@@ -54,6 +47,13 @@ make_predictions <- function(processed_RNAseq) {
 	# Make sure it closes when we exit this reactive, even if there's an error
 	on.exit(progress$close())
 
+	average_exp_vals = read_rds(here('data/average_model_exp_vals.rds'))
+	
+	klaeger_wide = read_rds(here('data/klaeger_wide.rds')) %>%
+		filter(concentration_M != 0)
+	
+	rand_forest_model = read_rds(here('data/final_model_500feat_100trees.rds'))
+	
 	model_data = processed_RNAseq %>% 
 		mutate(model_feature = paste0("exp_",hgnc_symbol), 
 					 trans_TPM = log2(TPM + 1)) %>% 
@@ -77,6 +77,11 @@ make_predictions <- function(processed_RNAseq) {
 	model_predictions = model_predictions %>%
 		rename(predicted_viability = .pred) %>%
 		select(drug, concentration_M, everything())
+	
+	rm(rand_forest_model)
+	rm(klaeger_wide)
+	rm(average_exp_vals)
+	gc()
 	
 	return(model_predictions)
 }
