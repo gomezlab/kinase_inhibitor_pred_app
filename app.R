@@ -11,6 +11,7 @@ library(shiny)
 library(tidyverse)
 library(dqshiny)
 library(here)
+library(tidymodels)
 
 options(shiny.maxRequestSize=30*1024^2)
 
@@ -21,6 +22,7 @@ ENST_to_hgnc = read_csv(here('data/model_expression_genes.csv'))
 convert_salmon_to_HGNC_TPM <- function(transript_data) {
 	#look for ENST in the name column
 	if (mean(str_detect(transript_data$Name,"ENST")) > 0.95) {
+		#Check for the version dot in the Name column, if there, remove it with separate
 		if (any(str_detect(transript_data$Name, "\\."))) {
 			transript_data = transript_data %>% separate(Name, into = c("Name",NA), sep = "\\.")
 		}
@@ -35,6 +37,26 @@ convert_salmon_to_HGNC_TPM <- function(transript_data) {
 	} else {
 		
 	}
+}
+
+make_predictions <- function(processed_RNAseq) {
+	klaeger_wide = read_rds(here('data/klaeger_wide.rds'))
+	
+	rand_forest_model = read_rds(here('data/final_model_500feat_100trees.rds'))
+	
+	model_data = processed_RNAseq %>% 
+		mutate(model_feature = paste0("exp_",hgnc_symbol), 
+					 trans_TPM = log2(TPM + 1)) %>% 
+		select(-hgnc_symbol,-TPM) %>% 
+		pivot_wider(names_from = model_feature,values_from = trans_TPM) %>% 
+		slice(rep(1:n(), each = dim(klaeger_wide)[1])) %>%
+		bind_cols(klaeger_wide)
+	
+	model_predictions = predict(rand_forest_model, model_data %>% mutate(klaeger_conc = NA, imputed_viability = NA, depmap_id = NA))
+	model_predictions$drug = model_data$drug
+	model_predictions$concentration_M = model_data$concentration_M
+	
+	return(model_predictions)
 }
 
 # Define UI for application that draws a histogram
@@ -72,7 +94,9 @@ ui <- fluidPage(
         	
         	textOutput("RNAseq_qc_text"),
         	
-        	tableOutput("contents")
+        	tableOutput("contents"),
+        	
+        	tableOutput("pred")
         )
     )
 )
@@ -97,6 +121,13 @@ server <- function(input, output) {
 		req(input$RNAseq_file)
 		
 		return(RNAseq_data())
+	})
+	
+	output$pred <- renderTable({
+		
+		req(input$RNAseq_file)
+		
+		return(make_predictions(RNAseq_data()))
 	})
 }
 
