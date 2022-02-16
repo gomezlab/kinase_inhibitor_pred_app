@@ -21,7 +21,7 @@ ENST_to_hgnc = read_csv(here('data/model_expression_genes.csv'))
 convert_salmon_to_HGNC_TPM <- function(transript_data) {
 	#look for ENST in the name column
 	if (mean(str_detect(transript_data$Name,"ENST")) > 0.95) {
-		if (any(str_detect(transcript_test$Name, "\\."))) {
+		if (any(str_detect(transript_data$Name, "\\."))) {
 			transript_data = transript_data %>% separate(Name, into = c("Name",NA), sep = "\\.")
 		}
 		
