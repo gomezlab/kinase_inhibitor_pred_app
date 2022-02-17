@@ -91,35 +91,56 @@ ui <- fluidPage(
 	# Application title
 	titlePanel("Kinase Inhibitor Cell Viability Prediction"),
 	
-	tags$p(""),
+	tags$p("Hello and welcome to the kinase inhibitor cell viability prediction web server. This website is a companion 
+				 to a forthcoming publication concerning prediction of cell viability after exposure to kinase inhibitors. 
+				 The primary model developed in this paper uses RNAseq gene expression and the kinase inhibitor target profiles
+				 to make these predictions. We've made this server available to allow interested biologists to submit gene expression
+				 data they have gathered where there is some interest in how a set of kinase inhbitors would affect their model 
+				 system."),
+	
+	tags$hr(),
 	
 	# Sidebar with a slider input for number of bins 
 	sidebarLayout(
 		sidebarPanel(
-			fileInput("RNAseq_file", "Choose RNAseq Results File",
+			
+			tags$h2("Option 1: Upload RNAseq Results:"),
+			fileInput("RNAseq_file", "Please select your quant.sf file from salmon",
 								multiple = TRUE),
 			tags$hr(),
 			
+			tags$h2("Option 2: Specify a GEO ID:"),
 			autocomplete_input("GEO_ARCHS_ID", 
-												 h2("GEO ARCHS ID"), 
+												 "All IDs start with GSM",
 												 all_geo_archs_ids,
 												 placeholder = "Start Typing to Find Your GEO ID",
-												 max_options = 100),
+												 max_options = 10),
 		),
 		
 		mainPanel(
 			tags$div(id = "instructions",
-							 tags$h1("Application Instructions:"),
-							 tags$ol(
-							 	tags$li("ABC")
-							 ),
+							 tags$h2("Application Instructions:"),
 							 
+							 tags$p("There are currently two ways to input your RNAseq data to make kinase inhibitor cell 
+							 				 viability predictions. The first is to upload the \"quant.sf\" file from the salmon (or compatible) 
+							 				 read aligner. Alternatively, you can input a GEO database ID which has been preprocessed by the ARCHS 
+							 			 project."),
+							 
+							 tags$p("After inputing a data set, the processing pipeline will organize your data and search for the data 
+							 			 related to the genes used in the model. Then the model will be loaded and cell viability predictions 
+							 			 made for your data set for all 229 compounds in the Klaeger et al set. Finally, a preview of the 
+							 			 results will be displayed with an option to download the full predictions and a summary document 
+							 			 highlighting some of the most interesting compounds."),
+							 
+							 tags$p("The processing should take less than a minute and progress indicators will appear in the bottom 
+							 			 corner."),
 			),
+			
 			
 			tags$div(id = "results", 
 							 tags$h1("RNAseq Data Checks")			 
 			),
-
+			
 			textOutput("RNAseq_qc_text"),
 			fluidRow(
 				column(6,tableOutput("RNAseq_sample")),
@@ -175,7 +196,7 @@ server <- function(input, output) {
 	output$prediction_sample <- renderTable({
 		
 		req(input$RNAseq_file)
-
+		
 		return(head(model_predictions()))
 	})
 	
