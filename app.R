@@ -1,12 +1,3 @@
-#
-# This is a Shiny web application. You can run the application by clicking
-# the 'Run App' button above.
-#
-# Find out more about building applications with Shiny here:
-#
-#    http://shiny.rstudio.com/
-#
-
 library(shiny)
 library(tidyverse)
 library(dqshiny)
@@ -14,8 +5,11 @@ library(here)
 library(tidymodels)
 library(reactable)
 library(shinyjs)
+library(digest)
 
 options(shiny.maxRequestSize=30*1024^2)
+
+dir.create(here('data/uploads'), showWarnings = F)
 
 all_geo_archs_ids = read_rds(here('data/ARCHS_GEO_IDs.rds'))
 
@@ -46,7 +40,9 @@ make_predictions <- function(processed_RNAseq) {
 	progress <- shiny::Progress$new()
 	# Make sure it closes when we exit this reactive, even if there's an error
 	on.exit(progress$close())
-
+	
+	progress$inc(2/3, message = NULL, detail = "Loading Model")
+	
 	average_exp_vals = read_rds(here('data/average_model_exp_vals.rds'))
 	
 	klaeger_wide = read_rds(here('data/klaeger_wide.rds')) %>%
@@ -58,7 +54,7 @@ make_predictions <- function(processed_RNAseq) {
 		mutate(model_feature = paste0("exp_",hgnc_symbol), 
 					 trans_TPM = log2(TPM + 1)) %>% 
 		select(-hgnc_symbol,-TPM)
-
+	
 	missing_RNAseq_vals = average_exp_vals %>% 
 		filter(! model_feature %in% model_data$model_feature)
 	
@@ -76,6 +72,7 @@ make_predictions <- function(processed_RNAseq) {
 	
 	model_predictions = model_predictions %>%
 		rename(predicted_viability = .pred) %>%
+		mutate(predicted_viability = signif(predicted_viability,3)) %>%
 		select(drug, concentration_M, everything())
 	
 	rm(rand_forest_model)
@@ -108,15 +105,21 @@ ui <- fluidPage(
 												 all_geo_archs_ids,
 												 placeholder = "Start Typing to Find Your GEO ID",
 												 max_options = 100),
-			
-			tags$hr(),
-			
 		),
-
-		# Show a plot of the generated distribution
+		
 		mainPanel(
-			tags$h1("RNAseq Data Checks"),
+			tags$div(id = "instructions",
+							 tags$h1("Application Instructions:"),
+							 tags$ol(
+							 	tags$li("ABC")
+							 ),
+							 
+			),
 			
+			tags$div(id = "results", 
+							 tags$h1("RNAseq Data Checks")			 
+			),
+
 			textOutput("RNAseq_qc_text"),
 			fluidRow(
 				column(6,tableOutput("RNAseq_sample")),
@@ -124,35 +127,33 @@ ui <- fluidPage(
 				column(6,tableOutput("prediction_sample"))
 			),
 			
-			downloadButton("model_predictions_download", label = "Download Model Predictions")
+			downloadButton("model_predictions_download", label = "Download Model Predictions"),
 		)
 	)
 )
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
-	
-	
 	RNAseq_data <- reactive({
 		progress <- shiny::Progress$new()
 		# Make sure it closes when we exit this reactive, even if there's an error
 		on.exit(progress$close())
-
-		progress$inc(1/3, detail = "Recieving Data")
 		
-		read_delim(input$RNAseq_file$datapath, delim = "\t") %>%
+		progress$inc(1/3, detail = "Processing Data")
+		
+		hide("instructions")
+		
+		TPM_data = read_delim(input$RNAseq_file$datapath, delim = "\t") %>%
 			convert_salmon_to_HGNC_TPM()
+		
+		file.copy(input$RNAseq_file$datapath, here('data/uploads',paste0(substr(digest(TPM_data), 1, 6))))
+		TPM_data
 	})
 	
 	model_predictions <- reactive({
-		progress <- shiny::Progress$new()
-		# Make sure it closes when we exit this reactive, even if there's an error
-		on.exit(progress$close())
-		
-		progress$inc(3/3, detail = "Making Model Predictions")
-		
 		prediction_results = make_predictions(RNAseq_data())
 		
+		shinyjs::show("results")
 		shinyjs::show("model_predictions_download")
 		
 		prediction_results
@@ -161,20 +162,12 @@ server <- function(input, output) {
 	output$RNAseq_qc_text <- renderText({
 		req(input$RNAseq_file)
 		
-		progress <- shiny::Progress$new()
-		# Make sure it closes when we exit this reactive, even if there's an error
-		on.exit(progress$close())
-		
-		progress$inc(2/3, detail = "Processing Data")
-		
 		paste0("Your file contains ", dim(RNAseq_data())[1], '/110 genes.')
-		
 	})
 	
 	output$RNAseq_sample <- renderTable({
 		
 		req(input$RNAseq_file)
-		
 		
 		return(head(RNAseq_data()))
 	})
@@ -188,13 +181,15 @@ server <- function(input, output) {
 	
 	output$model_predictions_download <- downloadHandler(
 		filename = function() {
-			paste0("kinase_inhbitor_model_predictions.csv")
+			
+			paste0("kinase_inhbitor_model_predictions_",paste0(substr(digest(RNAseq_data()), 1, 6)),".csv")
 		}, 
 		content = function(file) {
 			write_csv(model_predictions(), file)
 		})
 	
 	shinyjs::hide("model_predictions_download")
+	shinyjs::hide("results")
 }
 
 # Run the application 
