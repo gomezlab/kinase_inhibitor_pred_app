@@ -6,6 +6,7 @@ library(tidymodels)
 library(reactable)
 library(shinyjs)
 library(digest)
+library(rhdf5)
 
 options(shiny.maxRequestSize=30*1024^2)
 
@@ -51,7 +52,8 @@ ui <- fluidPage(
 												 placeholder = "Start Typing to Find Your GEO ID",
 												 max_options = 10),
 			
-			actionButton("submit_geo", "Submit GEO ID")
+			actionButton("submit_geo", "Submit GEO ID"),
+			actionButton("submit_random_geo", "Submit Random GEO ID")
 		),
 		
 		mainPanel(
@@ -91,15 +93,15 @@ ui <- fluidPage(
 )
 
 # Define server logic required to draw a histogram
-server <- function(input, output) {
+server <- function(input, output, session) {
 	global_data <- reactiveValues(RNAseq = NULL)
 	
-	RNAseq_data <- observeEvent(input$RNAseq_file, {
+	observeEvent(input$RNAseq_file, {
 		progress <- shiny::Progress$new()
 		# Make sure it closes when we exit this reactive, even if there's an error
 		on.exit(progress$close())
 		
-		progress$inc(1/3, detail = "Processing Data")
+		progress$inc(1/3, detail = "Processing RNAseq Data")
 		
 		hide("instructions")
 		
@@ -108,6 +110,42 @@ server <- function(input, output) {
 		
 		file.copy(input$RNAseq_file$datapath, here('data/uploads',paste0(substr(digest(TPM_data), 1, 6))))
 		global_data$RNAseq = TPM_data
+	})
+	
+	observeEvent(input$submit_geo, {
+		progress <- shiny::Progress$new()
+		# Make sure it closes when we exit this reactive, even if there's an error
+		on.exit(progress$close())
+		
+		progress$inc(1/3, detail = "Processing GEO Dta")
+		
+		hide("instructions")
+		
+		archs_data = H5Fopen(here('data/ARCHS_subset/matt_model_matrix.h5'))
+		
+		GEO_col = which(archs_data$meta$samples$geo_accession == input$GEO_ARCHS_ID)
+		
+		global_data$RNAseq = data.frame(hgnc_symbol = archs_data$meta$genes$genes, TPM = archs_data$data$expression[GEO_col,])
+	})
+	
+	observeEvent(input$submit_random_geo, {
+		random_geo_id = sample(all_geo_archs_ids,1)
+		
+		update_autocomplete_input(session, "GEO_ARCHS_ID", value = random_geo_id)
+		
+		progress <- shiny::Progress$new()
+		# Make sure it closes when we exit this reactive, even if there's an error
+		on.exit(progress$close())
+		
+		progress$inc(1/3, detail = "Processing GEO Dta")
+		
+		hide("instructions")
+		
+		archs_data = H5Fopen(here('data/ARCHS_subset/matt_model_matrix.h5'))
+		
+		GEO_col = which(archs_data$meta$samples$geo_accession == random_geo_id)
+		
+		global_data$RNAseq = data.frame(hgnc_symbol = archs_data$meta$genes$genes, TPM = archs_data$data$expression[GEO_col,])
 	})
 	
 	output$RNAseq_qc_text <- renderText({
@@ -141,7 +179,7 @@ server <- function(input, output) {
 	
 	output$model_predictions_download <- downloadHandler(
 		filename = function() {
-			paste0("kinase_inhbitor_model_predictions_",paste0(substr(digest(RNAseq_data()), 1, 6)),".csv")
+			paste0("kinase_inhbitor_model_predictions_",paste0(substr(digest(global_data$RNAseq), 1, 6)),".csv")
 		}, 
 		content = function(file) {
 			write_csv(model_predictions(), file)
