@@ -117,7 +117,7 @@ server <- function(input, output, session) {
 		# Make sure it closes when we exit this reactive, even if there's an error
 		on.exit(progress$close())
 		
-		progress$inc(1/3, detail = "Processing GEO Dta")
+		progress$inc(1/3, detail = "Processing GEO Data")
 		
 		hide("instructions")
 		
@@ -137,7 +137,7 @@ server <- function(input, output, session) {
 		# Make sure it closes when we exit this reactive, even if there's an error
 		on.exit(progress$close())
 		
-		progress$inc(1/3, detail = "Processing GEO Dta")
+		progress$inc(1/3, detail = "Processing GEO Data")
 		
 		hide("instructions")
 		
