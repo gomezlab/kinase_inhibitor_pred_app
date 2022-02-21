@@ -21,7 +21,6 @@ ui <- fluidPage(
 	
 	shinyjs::useShinyjs(), 
 	
-	# Application title
 	titlePanel("Kinase Inhibitor Human Cell Viability Prediction"),
 	
 	tags$p("Hello and welcome to the kinase inhibitor cell viability prediction web server. This website is a companion 
@@ -182,7 +181,7 @@ server <- function(input, output, session) {
 			paste0("kinase_inhbitor_model_predictions_",paste0(substr(digest(global_data$RNAseq), 1, 6)),".csv")
 		}, 
 		content = function(file) {
-			write_csv(model_predictions(), file)
+			write_csv(model_predictions() %>% pivot_wider(names_from = concentration_M, values_from = predicted_viability), file)
 		})
 	
 	shinyjs::hide("model_predictions_download")
