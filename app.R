@@ -6,11 +6,13 @@ library(tidymodels)
 library(reactable)
 library(shinyjs)
 library(digest)
+library(rmarkdown)
 library(rhdf5)
 
 options(shiny.maxRequestSize=30*1024^2)
 
 dir.create(here('data/uploads'), showWarnings = F)
+dir.create(here('www'), showWarnings = F)
 
 all_geo_archs_ids = read_rds(here('data/ARCHS_GEO_IDs.rds'))
 
@@ -35,7 +37,6 @@ ui <- fluidPage(
 	
 	tags$hr(),
 	
-	# Sidebar with a slider input for number of bins 
 	sidebarLayout(
 		sidebarPanel(
 			
@@ -86,14 +87,28 @@ ui <- fluidPage(
 				column(6,tableOutput("prediction_sample"))
 			),
 			
-			downloadButton("model_predictions_download", label = "Download Model Predictions"),
+			fluidRow(
+				downloadButton("model_predictions_download", label = "Download Model Predictions"),
+				downloadButton("predictions_summary_docx_download", label = "Download Predictions Summary - DOCX Format")
+				# downloadButton("predictions_summary_pdf_download", label = "Download Predictions Summary - PDF Format")
+			)
+			
 		)
+	),
+	
+	tags$hr(),
+	
+	fluidRow(
+		column(11),
+		column(1,
+					 tags$a(href="https://github.com/mbergins/kinase_inhibitor_pred_app", icon("github", class="rightAlign fa-2x")))
 	)
 )
 
 # Define server logic required to draw a histogram
 server <- function(input, output, session) {
-	global_data <- reactiveValues(RNAseq = NULL)
+	global_data <- reactiveValues(RNAseq = NULL,
+																model_id = NULL)
 	
 	observeEvent(input$RNAseq_file, {
 		progress <- shiny::Progress$new()
@@ -107,8 +122,11 @@ server <- function(input, output, session) {
 		TPM_data = read_delim(input$RNAseq_file$datapath, delim = "\t") %>%
 			convert_salmon_to_HGNC_TPM()
 		
-		file.copy(input$RNAseq_file$datapath, here('data/uploads',paste0(substr(digest(TPM_data), 1, 6))))
+		global_data$model_id = substr(digest(TPM_data), 1, 6)
+		
+		file.copy(input$RNAseq_file$datapath, here('data/uploads',global_data$model_id))
 		global_data$RNAseq = TPM_data
+		global_data$model_id = substr(digest(global_data$RNAseq), 1, 6)
 	})
 	
 	observeEvent(input$submit_geo, {
@@ -125,6 +143,7 @@ server <- function(input, output, session) {
 		GEO_col = which(archs_data$meta$samples$geo_accession == input$GEO_ARCHS_ID)
 		
 		global_data$RNAseq = data.frame(hgnc_symbol = archs_data$meta$genes$genes, TPM = archs_data$data$expression[GEO_col,])
+		global_data$model_id = substr(digest(global_data$RNAseq), 1, 6)
 	})
 	
 	observeEvent(input$submit_random_geo, {
@@ -145,46 +164,75 @@ server <- function(input, output, session) {
 		GEO_col = which(archs_data$meta$samples$geo_accession == random_geo_id)
 		
 		global_data$RNAseq = data.frame(hgnc_symbol = archs_data$meta$genes$genes, TPM = archs_data$data$expression[GEO_col,])
+		global_data$model_id = substr(digest(global_data$RNAseq), 1, 6)
 	})
-	
+
 	output$RNAseq_qc_text <- renderText({
-		if (is.null(global_data$RNAseq)) return()
+		if (is.null(global_data$model_id)) return()
 		
 		paste0("Your file contains ", dim(global_data$RNAseq)[1], '/110 genes.')
 	})
 	
 	model_predictions <- reactive({
-		if (is.null(global_data$RNAseq)) return()
+		if (is.null(global_data$model_id)) return()
 		
 		prediction_results = make_predictions(global_data$RNAseq)
 		
+		render('build_inhibitor_overview.Rmd', 
+					 output_file = here('www/',paste0("kinase_inhibitor_summary_",global_data$model_id,".docx")), 
+					 params = list(predictions = prediction_results, RNAseq_data = global_data$RNAseq, model_id = global_data$model_id))
+		
+		# render('build_inhibitor_overview.Rmd', 
+		# 			 output_file = here('www/',paste0("kinase_inhibitor_summary_",global_data$model_id,".pdf")), 
+		# 			 params = list(predictions = prediction_results, RNAseq_data = global_data$RNAseq, model_id = global_data$model_id))
+		
 		shinyjs::show("results")
 		shinyjs::show("model_predictions_download")
+		shinyjs::show("predictions_summary_docx_download")
+		# shinyjs::show("predictions_summary_pdf_download")
 		
 		prediction_results
 	})
 	
 	output$RNAseq_sample <- renderTable({
-		if (is.null(global_data$RNAseq)) return()
+		if (is.null(global_data$model_id)) return()
 		
 		return(head(global_data$RNAseq))
 	})
 	
 	output$prediction_sample <- renderTable({
-		if (is.null(global_data$RNAseq)) return()
+		if (is.null(global_data$model_id)) return()
 		
 		return(head(model_predictions()))
 	})
 	
 	output$model_predictions_download <- downloadHandler(
 		filename = function() {
-			paste0("kinase_inhbitor_model_predictions_",paste0(substr(digest(global_data$RNAseq), 1, 6)),".csv")
+			paste0("kinase_inhbitor_model_predictions_",global_data$model_id,".csv")
 		}, 
 		content = function(file) {
 			write_csv(model_predictions() %>% pivot_wider(names_from = concentration_M, values_from = predicted_viability), file)
 		})
 	
+	output$predictions_summary_docx_download <- downloadHandler(
+		filename = function() {
+			paste0("kinase_inhibitor_summary_",paste0(global_data$model_id),".docx")
+		}, 
+		content = function(file) {
+			file.copy(here('www/',paste0("kinase_inhibitor_summary_",global_data$model_id,".docx")), file)
+		})
+	
+	# output$predictions_summary_pdf_download <- downloadHandler(
+	# 	filename = function() {
+	# 		paste0("kinase_inhibitor_summary_",paste0(global_data$model_id),"pdf")
+	# 	}, 
+	# 	content = function(file) {
+	# 		file.copy(here('www/',paste0("kinase_inhibitor_summary_",global_data$model_id,"pdf")), file)
+	# 	})
+	
 	shinyjs::hide("model_predictions_download")
+	shinyjs::hide("predictions_summary_docx_download")
+	# shinyjs::hide("predictions_summary_pdf_download")
 	shinyjs::hide("results")
 }
 
