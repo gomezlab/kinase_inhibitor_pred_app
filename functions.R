@@ -32,7 +32,7 @@ make_predictions <- function(processed_RNAseq) {
 	klaeger_wide = read_rds(here('data/klaeger_wide.rds')) %>%
 		filter(concentration_M != 0)
 	
-	# rand_forest_model = read_rds(here('data/final_model_500feat_100trees.rds'))
+	rand_forest_model = read_rds(here('data/final_model_500feat_100trees.rds'))
 	
 	progress$inc(3/3, detail = "Making Model Predictions")
 	
@@ -50,7 +50,7 @@ make_predictions <- function(processed_RNAseq) {
 		slice(rep(1:n(), each = dim(klaeger_wide)[1])) %>%
 		bind_cols(klaeger_wide)
 	
-	model_predictions = predict(read_rds(here('data/final_model_500feat_100trees.rds')), 
+	model_predictions = predict(rand_forest_model, 
 															model_data %>% mutate(klaeger_conc = NA, imputed_viability = NA, depmap_id = NA))
 	model_predictions$drug = model_data$drug
 	model_predictions$concentration_M = model_data$concentration_M

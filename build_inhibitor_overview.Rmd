@@ -1,0 +1,26 @@
+---
+title: "Kinase Inhibitor Prediction Overview"
+date: "`r Sys.Date()`"
+output: word_document
+params:
+  predictions: NA
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+
+knitr::opts_chunk$set(echo = TRUE)
+
+prediction_set = params$predictions
+prediction_set = temp
+```
+
+```{r}
+summary_results = prediction_set %>%
+	group_by(concentration_M) %>%
+	summarise(mean_via = mean(predicted_viability))
+
+ggplot(summary_results, aes(x=log10(concentration_M),y=mean_via)) +
+	geom_line() +
+	geom_point()
+```
