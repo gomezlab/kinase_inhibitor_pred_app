@@ -2,8 +2,11 @@
 title: "Kinase Inhibitor Prediction Overview"
 date: "`r Sys.Date()`"
 output: word_document
+fig_width: 10
 params:
   predictions: NA
+  RNAseq_data: NA
+  model_id: NA
 ---
 
 ```{r setup, include=FALSE}
@@ -11,16 +14,113 @@ library(tidyverse)
 
 knitr::opts_chunk$set(echo = TRUE)
 
-prediction_set = params$predictions
-prediction_set = temp
+if (params$RNAseq_data == "NA") {
+	source(here('functions.R'))
+	RNAseq_data = read_delim('data/quant.sf') %>% convert_salmon_to_HGNC_TPM()
+} else {
+	RNAseq_data = params$RNAseq_data
+}
+
+if (params$predictions == "NA") {
+	predictions = make_predictions(RNAseq_data)
+} else {
+	predictions = params$predictions
+}
+
+if (params$model_id == "NA") {
+	model_id = substr(digest(RNAseq_data), 1, 6)
+} else {
+	model_id = params$model_id
+}
+
+CCLE_preds = read_rds(here('data/CCLE_prediction_summary.rds'))
+
+predictions = predictions %>%
+	left_join(CCLE_preds)
 ```
 
-```{r}
-summary_results = prediction_set %>%
-	group_by(concentration_M) %>%
-	summarise(mean_via = mean(predicted_viability))
+```{r, include = F}
+RNAseq_text = c()
 
-ggplot(summary_results, aes(x=log10(concentration_M),y=mean_via)) +
-	geom_line() +
-	geom_point()
+if (dim(RNAseq_data)[1] > 100) {
+	RNAseq_text = paste0("The data you submitted has ", dim(RNAseq_data)[1], " out of the 110 genes included in the model.")
+} else if (dim(RNAseq_data)[1] < 100 & dim(RNAseq_data)[1] > 50) {
+	RNAseq_text = paste0("The data you submitted has ", dim(RNAseq_data)[1], " out of the 110 genes included in the model. There was a problem with finding many of the genes in your data set. All genes missing from your data were filled with the average value from the cell lines in the CCLE. If you think this is an error, please get in touch with me through github (https://github.com/mbergins/kinase_inhibitor_pred_app).")
+} else {
+	RNAseq_text = paste0("The data you submitted has ", dim(RNAseq_data)[1], " out of the 110 genes included in the model. The system wasn't able to find a majority of the genes expected. All genes missing from your data were filled with the average value from the cell lines in the CCLE. The following predictions are not customized for your data.  If you think this is an error, please get in touch with me through github (https://github.com/mbergins/kinase_inhibitor_pred_app).")
+}
+
+```
+
+This report summarizes the cell viability predictions for your data set. `r RNAseq_text` For reference, the system assigned your data the ID: `r model_id`.
+
+# Cell Viability Predictions
+
+To provide context for the predictions from your data, all of the following plots also show a summary of the predictions from the cell lines in the CCLE. The gray shaded region shows the range (95% coverage) of predictions for that compound, while the black line shows the average prediction. Predictions for your data appear as a blue line.
+
+To help pick out potentially interesting compounds from the model predictions, we've sorted the predictions using four different methods:
+
+* The compound is predicted to have minimal effects on cell viability.
+* The compound is predicted to have high effects on cell viability at all concentrations.
+* The compound is predicted to show a wide range of effect on cell viability.
+* The compound is predicted to have a substantially different effect as compared to the CCLE cell line set.
+
+```{r, include = F}
+summary_results = predictions %>% 
+	group_by(drug) %>%
+	summarise(mean_via = mean(predicted_viability),
+						CCLE_diff = abs(mean(predicted_viability - mean_via)),
+						range_via = max(predicted_viability) - min(predicted_viability))
+
+plot_pred_set <- function(data_set) {
+	ggplot(data_set, aes(x=log10(concentration_M),y=mean_via)) +
+		geom_ribbon(aes(ymin=lower_bound,ymax=upper_bound), alpha=0.25) +
+		geom_line(alpha=0.75) +
+		geom_line(aes(x=log10(concentration_M),y=predicted_viability), color = "blue") +
+		geom_point(aes(x=log10(concentration_M),y=predicted_viability), color = "blue") +
+		ylim(c(0,NA)) +
+		labs(x = "Compound Concentration (Log 10 M)",y = "Predicted Viability") +
+		BerginskiRMisc::theme_berginski() +
+		facet_grid(cols = vars(drug))
+}
+```
+
+## Minimal Effects
+
+```{r, echo = F}
+low_eff_drugs = summary_results %>% arrange(desc(mean_via)) %>% slice(1:5) %>% pull(drug)
+predictions %>%
+	filter(drug %in% low_eff_drugs) %>%
+	mutate(drug = fct_relevel(drug, low_eff_drugs)) %>%
+	plot_pred_set()
+```
+
+## High Effects
+
+```{r, echo = F}
+high_eff_drugs = summary_results %>% arrange(mean_via) %>% slice(1:5) %>% pull(drug)
+predictions %>%
+	filter(drug %in% high_eff_drugs) %>%
+	mutate(drug = fct_relevel(drug, high_eff_drugs)) %>%
+	plot_pred_set()
+```
+
+## High Range of Effect
+
+```{r, echo = F}
+high_range_drugs = summary_results %>% arrange(desc(range_via)) %>% slice(1:5) %>% pull(drug)
+predictions %>%
+	filter(drug %in% high_range_drugs) %>%
+	mutate(drug = fct_relevel(drug, high_range_drugs)) %>%
+	plot_pred_set()
+```
+
+## Largest Difference from CCLE
+
+```{r, echo = F}
+ccle_diff_drugs = summary_results %>% arrange(desc(CCLE_diff), desc(range_via)) %>% slice(1:5) %>% pull(drug)
+predictions %>%
+	filter(drug %in% ccle_diff_drugs) %>%
+	mutate(drug = fct_relevel(drug, ccle_diff_drugs)) %>%
+	plot_pred_set()
 ```
