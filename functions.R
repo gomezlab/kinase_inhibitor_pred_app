@@ -21,12 +21,14 @@ convert_salmon_to_HGNC_TPM <- function(transript_data) {
 }
 
 make_predictions <- function(processed_RNAseq) {
-	progress <- shiny::Progress$new()
-	# Make sure it closes when we exit this reactive, even if there's an error
-	on.exit(progress$close())
 	
-	progress$inc(2/3, message = NULL, detail = "Loading Model")
-	
+	if (shiny::isRunning()) {
+		progress <- shiny::Progress$new()
+		# Make sure it closes when we exit this reactive, even if there's an error
+		on.exit(progress$close())
+		
+		progress$inc(2/3, message = NULL, detail = "Loading Model")
+	}
 	average_exp_vals = read_rds(here('data/average_model_exp_vals.rds'))
 	
 	klaeger_wide = read_rds(here('data/klaeger_wide.rds')) %>%
@@ -34,7 +36,9 @@ make_predictions <- function(processed_RNAseq) {
 	
 	rand_forest_model = read_rds(here('data/final_model_500feat_100trees.rds'))
 	
-	progress$inc(3/3, detail = "Making Model Predictions")
+	if (shiny::isRunning()) {
+		progress$inc(3/3, detail = "Making Model Predictions")
+	}
 	
 	model_data = processed_RNAseq %>% 
 		mutate(model_feature = paste0("exp_",hgnc_symbol), 
