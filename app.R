@@ -74,42 +74,55 @@ ui <- fluidPage(
 							 			 corner."),
 			),
 			
-			fluidRow(
-				column(12,textOutput("RNAseq_qc_text"))
-			),
-			
-			fluidRow(
-				downloadButton("model_predictions_download", label = "Download Model Predictions"),
-				downloadButton("predictions_summary_docx_download", label = "Download Predictions Summary - DOCX Format")
-				# downloadButton("predictions_summary_pdf_download", label = "Download Predictions Summary - PDF Format")
+			div(id = 'results',
+					fluidRow(
+						column(12,textOutput("RNAseq_qc_text"))
+					),
+					
+					fluidRow(
+						column(6,plotOutput("minimal_eff_preds"))
+					),
+					
+					fluidRow(
+						downloadButton("model_predictions_download", label = "Download Model Predictions"),
+						downloadButton("predictions_summary_docx_download", label = "Download Predictions Report - DOCX Format")
+						# downloadButton("predictions_summary_pdf_download", label = "Download Predictions Summary - PDF Format")
+					)
 			)
-			
 		)
 	),
 	
 	hr(),
 	
 	fluidRow(id = "footnotes",
-		column(11,
-					 p("The model used in this system is based on data from ", 
-					 	a(href="https://www.theprismlab.org/","PRISM", .noWS = "outside"), ", ", 
-					 	a(href="https://sites.broadinstitute.org/ccle/","CCLE", .noWS = "outside")," and ", 
-					 	a(href="http://dx.doi.org/10.1126/science.aan4368","Klaeger et. al", .noWS = "outside"), 
-					 	". Submission through GEO ID facilitated through preprocesing of RNAseq data by ", 
-					 	a(href="https://maayanlab.cloud/archs4/","ARCHS", .noWS = "outside"), ".",
-					 	.noWS = c("after-begin", "before-end"))
-		),
-		
-		column(1,
-					 a(href="https://github.com/mbergins/kinase_inhibitor_pred_app", icon("github", class="fa-2x", style="float:right;")))
+					 column(11,
+					 			 p("The model used in this system is based on data from ", 
+					 			 	a(href="https://www.theprismlab.org/","PRISM", .noWS = "outside"), ", ", 
+					 			 	a(href="https://sites.broadinstitute.org/ccle/","CCLE", .noWS = "outside")," and ", 
+					 			 	a(href="http://dx.doi.org/10.1126/science.aan4368","Klaeger et. al", .noWS = "outside"), 
+					 			 	". Submission through GEO ID facilitated through preprocesing of RNAseq data by ", 
+					 			 	a(href="https://maayanlab.cloud/archs4/","ARCHS", .noWS = "outside"), ".",
+					 			 	.noWS = c("after-begin", "before-end"))
+					 ),
+					 
+					 column(1,
+					 			 a(href="https://github.com/mbergins/kinase_inhibitor_pred_app", icon("github", class="fa-2x", style="float:right;")))
 	)
 )
 
 # Define server logic required to draw a histogram
 server <- function(input, output, session) {
+	
+	#Hide download buttons until after model has run
+	shinyjs::hide("results")
+
 	global_data <- reactiveValues(RNAseq = NULL,
 																model_predictions = NULL,
 																model_id = NULL)
+	
+	##############################################################################
+	# RNAseq Input Processing
+	##############################################################################
 	
 	observeEvent(input$RNAseq_file, {
 		progress <- shiny::Progress$new()
@@ -164,11 +177,15 @@ server <- function(input, output, session) {
 		
 		global_data$RNAseq = data.frame(hgnc_symbol = archs_data$meta$genes$genes, TPM = archs_data$data$expression[GEO_col,])
 	})
-
+	
+	##############################################################################
+	# Model Running
+	##############################################################################
+	
 	observeEvent(global_data$RNAseq, {
 		global_data$model_id = substr(digest(global_data$RNAseq), 1, 6)
 	})
-		
+	
 	observeEvent(global_data$model_id, {
 		run_model()
 	})
@@ -184,30 +201,30 @@ server <- function(input, output, session) {
 		
 		global_data$model_predictions = make_predictions(global_data$RNAseq)
 		
+		progress <- shiny::Progress$new()
+		# Make sure it closes when we exit this reactive, even if there's an error
+		on.exit(progress$close())
+		
+		progress$inc(4/4, detail = "Building Results Report")
+		
 		render('build_inhibitor_overview.Rmd', 
 					 output_file = here('www/',paste0("kinase_inhibitor_summary_",global_data$model_id,".docx")), 
 					 params = list(predictions = global_data$model_predictions, RNAseq_data = global_data$RNAseq, model_id = global_data$model_id))
 		
-		# render('build_inhibitor_overview.Rmd', 
-		# 			 output_file = here('www/',paste0("kinase_inhibitor_summary_",global_data$model_id,".pdf")), 
-		# 			 params = list(predictions = prediction_results, RNAseq_data = global_data$RNAseq, model_id = global_data$model_id))
-
-		shinyjs::show("model_predictions_download")
-		shinyjs::show("predictions_summary_docx_download")
-		# shinyjs::show("predictions_summary_pdf_download")
+		shinyjs::show("results")
 	})
 	
-	output$RNAseq_sample <- renderTable({
-		if (is.null(global_data$model_id)) return()
-		
-		return(head(global_data$RNAseq))
+	##############################################################################
+	# Model Prediction Plotting
+	##############################################################################	
+	
+	output$minimal_eff_preds <- renderPlot({
+		hist(rnorm(100))
 	})
 	
-	output$prediction_sample <- renderTable({
-		if (is.null(global_data$model_predictions)) return()
-		
-		return(head(global_data$model_predictions))
-	})
+	##############################################################################
+	# Model Results Download
+	##############################################################################
 	
 	output$model_predictions_download <- downloadHandler(
 		filename = function() {
@@ -232,11 +249,6 @@ server <- function(input, output, session) {
 	# 	content = function(file) {
 	# 		file.copy(here('www/',paste0("kinase_inhibitor_summary_",global_data$model_id,"pdf")), file)
 	# 	})
-	
-	shinyjs::hide("model_predictions_download")
-	shinyjs::hide("predictions_summary_docx_download")
-	# shinyjs::hide("predictions_summary_pdf_download")
-	shinyjs::hide("results")
 }
 
 # Run the application 
