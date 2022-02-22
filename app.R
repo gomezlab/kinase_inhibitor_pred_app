@@ -257,7 +257,11 @@ server <- function(input, output, session) {
 	run_model <- reactive({
 		if (is.null(global_data$model_id)) return()
 		
+		source(here('functions.R'))
+		
 		global_data$model_predictions = make_predictions(global_data$RNAseq)
+		
+		rm("make_predictions")
 		
 		progress <- shiny::Progress$new()
 		# Make sure it closes when we exit this reactive, even if there's an error
