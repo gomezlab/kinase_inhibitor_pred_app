@@ -250,7 +250,8 @@ server <- function(input, output, session) {
 	output$RNAseq_qc_text <- renderText({
 		if (is.null(global_data$model_predictions)) return()
 		
-		paste0("Your dataset contains ", dim(global_data$RNAseq)[1], '/110 genes.')
+		paste0("Your dataset contains ", dim(global_data$RNAseq)[1], ' of the 110 genes included in the model. 
+					 For every gene missing, the average value from the original model data has been substituted.')
 	})
 	
 	run_model <- reactive({
