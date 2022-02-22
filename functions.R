@@ -20,6 +20,18 @@ convert_salmon_to_HGNC_TPM <- function(transript_data) {
 	}
 }
 
+plot_pred_set <- function(data_set) {
+	ggplot(data_set, aes(x=log10(concentration_M),y=mean_via)) +
+		geom_ribbon(aes(ymin=lower_bound,ymax=upper_bound), alpha=0.25) +
+		geom_line(alpha=0.75) +
+		geom_line(aes(x=log10(concentration_M),y=predicted_viability), color = "blue") +
+		geom_point(aes(x=log10(concentration_M),y=predicted_viability), color = "blue") +
+		ylim(c(0,NA)) +
+		labs(x = "Compound Concentration (Log 10 M)",y = "Predicted Viability") +
+		BerginskiRMisc::theme_berginski() +
+		facet_grid(cols = vars(drug))
+}
+
 make_predictions <- function(processed_RNAseq) {
 	
 	if (shiny::isRunning()) {
@@ -27,8 +39,9 @@ make_predictions <- function(processed_RNAseq) {
 		# Make sure it closes when we exit this reactive, even if there's an error
 		on.exit(progress$close())
 		
-		progress$inc(2/3, message = NULL, detail = "Loading Model")
+		progress$inc(2/4, detail = "Loading Model")
 	}
+	
 	average_exp_vals = read_rds(here('data/average_model_exp_vals.rds'))
 	
 	klaeger_wide = read_rds(here('data/klaeger_wide.rds')) %>%
@@ -37,7 +50,7 @@ make_predictions <- function(processed_RNAseq) {
 	rand_forest_model = read_rds(here('data/final_model_500feat_100trees.rds'))
 	
 	if (shiny::isRunning()) {
-		progress$inc(3/3, detail = "Making Model Predictions")
+		progress$inc(3/4, detail = "Making Model Predictions")
 	}
 	
 	model_data = processed_RNAseq %>% 
@@ -64,8 +77,7 @@ make_predictions <- function(processed_RNAseq) {
 		mutate(predicted_viability = signif(predicted_viability,3)) %>%
 		select(drug, concentration_M, everything())
 	
-	# rm(rand_forest_model)
-	
+	rm(rand_forest_model)
 	rm(klaeger_wide)
 	rm(average_exp_vals)
 	gc()
