@@ -32,8 +32,7 @@ ui <- fluidPage(
 				 data they have gathered where there is some interest in how a set of kinase inhbitors would affect their model 
 				 system."),
 	
-	tags$p("This model is built to work with human cell line RNAseq data. Unfortunately, the model will not work with 
-				 data from any other organism."),
+	tags$p("This model is built to work with human cell line RNAseq data and makes cell viability predictions for 229 kinase inhibitors."),
 	
 	tags$hr(),
 	
@@ -62,8 +61,8 @@ ui <- fluidPage(
 							 
 							 tags$p("There are currently two ways to input your RNAseq data to make kinase inhibitor cell 
 							 				 viability predictions. The first is to upload the \"quant.sf\" file from the salmon (or compatible) 
-							 				 read aligner. Alternatively, you can input a GEO database ID which has been preprocessed by the ARCHS 
-							 			 project."),
+							 				 read aligner produced using the ensemble transcript set (ENST). Alternatively, you can input a GEO 
+							 			 database ID which has been preprocessed by the ARCHS project."),
 							 
 							 tags$p("After inputing a data set, the processing pipeline will organize your data and search for the data 
 							 			 related to the genes used in the model. Then the model will be loaded and cell viability predictions 
@@ -74,7 +73,6 @@ ui <- fluidPage(
 							 tags$p("The processing should take less than a minute and progress indicators will appear in the bottom 
 							 			 corner."),
 			),
-			
 			
 			tags$div(id = "results", 
 							 tags$h1("RNAseq Data Checks")			 
@@ -96,12 +94,21 @@ ui <- fluidPage(
 		)
 	),
 	
-	tags$hr(),
+	hr(),
 	
-	fluidRow(
-		column(11),
+	fluidRow(id = "footnotes",
+		column(11,
+					 p("The model used in this system is based on data from ", 
+					 	a(href="https://www.theprismlab.org/","PRISM", .noWS = "outside"), ", ", 
+					 	a(href="https://sites.broadinstitute.org/ccle/","CCLE", .noWS = "outside")," and ", 
+					 	a(href="http://dx.doi.org/10.1126/science.aan4368","Klaeger et. al", .noWS = "outside"), 
+					 	". Submission through GEO ID facilitated through preprocesing of RNAseq data by ", 
+					 	a(href="https://maayanlab.cloud/archs4/","ARCHS", .noWS = "outside"), ".",
+					 	.noWS = c("after-begin", "before-end"))
+		),
+		
 		column(1,
-					 tags$a(href="https://github.com/mbergins/kinase_inhibitor_pred_app", icon("github", class="rightAlign fa-2x")))
+					 a(href="https://github.com/mbergins/kinase_inhibitor_pred_app", icon("github", class="fa-2x", style="float:right;")))
 	)
 )
 
@@ -166,7 +173,7 @@ server <- function(input, output, session) {
 		global_data$RNAseq = data.frame(hgnc_symbol = archs_data$meta$genes$genes, TPM = archs_data$data$expression[GEO_col,])
 		global_data$model_id = substr(digest(global_data$RNAseq), 1, 6)
 	})
-
+	
 	output$RNAseq_qc_text <- renderText({
 		if (is.null(global_data$model_id)) return()
 		
