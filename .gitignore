@@ -3,6 +3,8 @@
 .RData
 .Ruserdata
 
+*.docx
+
 data/final_model_500feat_100trees.rds
 data/uploads
 data/*.sf
