@@ -74,15 +74,8 @@ ui <- fluidPage(
 							 			 corner."),
 			),
 			
-			tags$div(id = "results", 
-							 tags$h1("RNAseq Data Checks")			 
-			),
-			
-			textOutput("RNAseq_qc_text"),
 			fluidRow(
-				column(6,tableOutput("RNAseq_sample")),
-				
-				column(6,tableOutput("prediction_sample"))
+				column(12,textOutput("RNAseq_qc_text"))
 			),
 			
 			fluidRow(
@@ -115,6 +108,7 @@ ui <- fluidPage(
 # Define server logic required to draw a histogram
 server <- function(input, output, session) {
 	global_data <- reactiveValues(RNAseq = NULL,
+																model_predictions = NULL,
 																model_id = NULL)
 	
 	observeEvent(input$RNAseq_file, {
@@ -133,7 +127,6 @@ server <- function(input, output, session) {
 		
 		file.copy(input$RNAseq_file$datapath, here('data/uploads',global_data$model_id))
 		global_data$RNAseq = TPM_data
-		global_data$model_id = substr(digest(global_data$RNAseq), 1, 6)
 	})
 	
 	observeEvent(input$submit_geo, {
@@ -150,7 +143,6 @@ server <- function(input, output, session) {
 		GEO_col = which(archs_data$meta$samples$geo_accession == input$GEO_ARCHS_ID)
 		
 		global_data$RNAseq = data.frame(hgnc_symbol = archs_data$meta$genes$genes, TPM = archs_data$data$expression[GEO_col,])
-		global_data$model_id = substr(digest(global_data$RNAseq), 1, 6)
 	})
 	
 	observeEvent(input$submit_random_geo, {
@@ -171,34 +163,38 @@ server <- function(input, output, session) {
 		GEO_col = which(archs_data$meta$samples$geo_accession == random_geo_id)
 		
 		global_data$RNAseq = data.frame(hgnc_symbol = archs_data$meta$genes$genes, TPM = archs_data$data$expression[GEO_col,])
+	})
+
+	observeEvent(global_data$RNAseq, {
 		global_data$model_id = substr(digest(global_data$RNAseq), 1, 6)
+	})
+		
+	observeEvent(global_data$model_id, {
+		run_model()
 	})
 	
 	output$RNAseq_qc_text <- renderText({
-		if (is.null(global_data$model_id)) return()
+		if (is.null(global_data$model_predictions)) return()
 		
-		paste0("Your file contains ", dim(global_data$RNAseq)[1], '/110 genes.')
+		paste0("Your file contains ", dim(global_data$RNAseq)[1], '/110 genes and ', dim(global_data$model_predictions)[1], " were made.")
 	})
 	
-	model_predictions <- reactive({
+	run_model <- reactive({
 		if (is.null(global_data$model_id)) return()
 		
-		prediction_results = make_predictions(global_data$RNAseq)
+		global_data$model_predictions = make_predictions(global_data$RNAseq)
 		
 		render('build_inhibitor_overview.Rmd', 
 					 output_file = here('www/',paste0("kinase_inhibitor_summary_",global_data$model_id,".docx")), 
-					 params = list(predictions = prediction_results, RNAseq_data = global_data$RNAseq, model_id = global_data$model_id))
+					 params = list(predictions = global_data$model_predictions, RNAseq_data = global_data$RNAseq, model_id = global_data$model_id))
 		
 		# render('build_inhibitor_overview.Rmd', 
 		# 			 output_file = here('www/',paste0("kinase_inhibitor_summary_",global_data$model_id,".pdf")), 
 		# 			 params = list(predictions = prediction_results, RNAseq_data = global_data$RNAseq, model_id = global_data$model_id))
-		
-		shinyjs::show("results")
+
 		shinyjs::show("model_predictions_download")
 		shinyjs::show("predictions_summary_docx_download")
 		# shinyjs::show("predictions_summary_pdf_download")
-		
-		prediction_results
 	})
 	
 	output$RNAseq_sample <- renderTable({
@@ -208,9 +204,9 @@ server <- function(input, output, session) {
 	})
 	
 	output$prediction_sample <- renderTable({
-		if (is.null(global_data$model_id)) return()
+		if (is.null(global_data$model_predictions)) return()
 		
-		return(head(model_predictions()))
+		return(head(global_data$model_predictions))
 	})
 	
 	output$model_predictions_download <- downloadHandler(
@@ -218,7 +214,7 @@ server <- function(input, output, session) {
 			paste0("kinase_inhbitor_model_predictions_",global_data$model_id,".csv")
 		}, 
 		content = function(file) {
-			write_csv(model_predictions() %>% pivot_wider(names_from = concentration_M, values_from = predicted_viability), file)
+			write_csv(global_data$model_predictions %>% pivot_wider(names_from = concentration_M, values_from = predicted_viability), file)
 		})
 	
 	output$predictions_summary_docx_download <- downloadHandler(
