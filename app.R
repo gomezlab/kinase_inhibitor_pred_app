@@ -15,6 +15,7 @@ dir.create(here('data/uploads'), showWarnings = F)
 dir.create(here('www'), showWarnings = F)
 
 all_geo_archs_ids = read_rds(here('data/ARCHS_GEO_IDs.rds'))
+CCLE_preds = read_rds(here('data/CCLE_prediction_summary.rds'))
 
 source(here('functions.R'))
 
@@ -76,12 +77,56 @@ ui <- fluidPage(
 			
 			div(id = 'results',
 					fluidRow(
+						column(12,p("The model has finished running and a summary of your results follows. You will find two buttons
+												at the bottom of this section to download a CSV file with the model predictions and a report with
+												more background on understanding your results."))
+					),
+					fluidRow(
 						column(12,textOutput("RNAseq_qc_text"))
 					),
 					
+					hr(),
+					
 					fluidRow(
-						column(6,plotOutput("minimal_eff_preds"))
+						column(12,
+									 h2("Compound Viability Predictions"),
+									 
+									 p("To provide context for the predictions from your data, all of the following plots also show a summary
+										of the predictions from the cell lines in the CCLE. The gray shaded region shows the range (95% coverage)
+										of predictions for that compound, while the black line shows the average prediction. Predictions for your
+										data appear as a blue line."),
+									 
+									 p("To help pick out potentially interesting compounds from the model predictions, we've sorted the 
+										predictions using four different methods:"),
+									 tags$ul(
+									 	tags$li("The compound is predicted to have minimal effects on cell viability."),
+									 	tags$li("The compound is predicted to have high average effect on cell viability."),
+									 	tags$li("The compound is predicted to show a wide range of effect on cell viability."),
+									 	tags$li("The compound is predicted to vary from the CCLE average effect.")
+									 	
+									 ),
+									 
+									 p("These categories are not mutually exclusive, so it's possible that a single compound will be present in 
+										multiple compound sets. Otherwise, the results are displayed as a set of small multiple graphs with the 
+										compound name in the title section."),
+						)
 					),
+					
+					fluidRow(
+						column(6,
+									 h3("Minimal Predicted Effect"),plotOutput("minimal_eff_preds")),
+						column(6,
+									 h3("High Predicted Effect"),plotOutput("high_eff_preds"))
+					),
+					
+					fluidRow(
+						column(6,
+									 h3("High Range of Predicted Effect"),plotOutput("high_range_preds")),
+						column(6,
+									 h3("Large Difference with CCLE Lines"),plotOutput("ccle_diff_preds"))
+					),
+					
+					hr(),
 					
 					fluidRow(
 						downloadButton("model_predictions_download", label = "Download Model Predictions"),
@@ -115,10 +160,11 @@ server <- function(input, output, session) {
 	
 	#Hide download buttons until after model has run
 	shinyjs::hide("results")
-
+	
 	global_data <- reactiveValues(RNAseq = NULL,
 																model_predictions = NULL,
-																model_id = NULL)
+																model_id = NULL,
+																model_pred_summary = NULL)
 	
 	##############################################################################
 	# RNAseq Input Processing
@@ -190,10 +236,21 @@ server <- function(input, output, session) {
 		run_model()
 	})
 	
+	observeEvent(global_data$model_predictions, {
+		global_data$model_pred_summary = global_data$model_predictions %>% 
+			group_by(drug) %>%
+			summarise(mean_via = mean(predicted_viability),
+								CCLE_diff = abs(mean(predicted_viability - mean_via)),
+								range_via = max(predicted_viability) - min(predicted_viability))
+		
+		global_data$model_pred_with_CCLE = global_data$model_predictions %>%
+			left_join(CCLE_preds)
+	})
+	
 	output$RNAseq_qc_text <- renderText({
 		if (is.null(global_data$model_predictions)) return()
 		
-		paste0("Your file contains ", dim(global_data$RNAseq)[1], '/110 genes and ', dim(global_data$model_predictions)[1], " were made.")
+		paste0("Your dataset contains ", dim(global_data$RNAseq)[1], '/110 genes.')
 	})
 	
 	run_model <- reactive({
@@ -219,7 +276,47 @@ server <- function(input, output, session) {
 	##############################################################################	
 	
 	output$minimal_eff_preds <- renderPlot({
-		hist(rnorm(100))
+		if (is.null(global_data$model_pred_with_CCLE)) return()
+		
+		low_eff_drugs = global_data$model_pred_summary %>% arrange(desc(mean_via)) %>% slice(1:5) %>% pull(drug)
+		
+		global_data$model_pred_with_CCLE %>%
+			filter(drug %in% low_eff_drugs) %>%
+			mutate(drug = fct_relevel(drug, low_eff_drugs)) %>%
+			plot_pred_set() + theme(text = element_text(size=16))
+	})
+	
+	output$high_eff_preds <- renderPlot({
+		if (is.null(global_data$model_pred_with_CCLE)) return()
+		
+		high_eff_drugs = global_data$model_pred_summary %>% arrange(mean_via) %>% slice(1:5) %>% pull(drug)
+		
+		global_data$model_pred_with_CCLE %>%
+			filter(drug %in% high_eff_drugs) %>%
+			mutate(drug = fct_relevel(drug, high_eff_drugs)) %>%
+			plot_pred_set() + theme(text = element_text(size=16))
+	})
+	
+	output$high_range_preds <- renderPlot({
+		if (is.null(global_data$model_pred_with_CCLE)) return()
+		
+		high_range_drugs = global_data$model_pred_summary %>% arrange(desc(range_via)) %>% slice(1:5) %>% pull(drug)
+		
+		global_data$model_pred_with_CCLE %>%
+			filter(drug %in% high_range_drugs) %>%
+			mutate(drug = fct_relevel(drug, high_range_drugs)) %>%
+			plot_pred_set() + theme(text = element_text(size=16))
+	})
+	
+	output$ccle_diff_preds <- renderPlot({
+		if (is.null(global_data$model_pred_with_CCLE)) return()
+		
+		ccle_diff_drugs = global_data$model_pred_summary %>% arrange(desc(CCLE_diff), desc(range_via)) %>% slice(1:5) %>% pull(drug)
+		
+		global_data$model_pred_with_CCLE %>%
+			filter(drug %in% ccle_diff_drugs) %>%
+			mutate(drug = fct_relevel(drug, ccle_diff_drugs)) %>%
+			plot_pred_set() + theme(text = element_text(size=16))
 	})
 	
 	##############################################################################
