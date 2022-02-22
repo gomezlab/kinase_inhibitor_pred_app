@@ -37,6 +37,8 @@ CCLE_preds = read_rds(here('data/CCLE_prediction_summary.rds'))
 
 predictions = predictions %>%
 	left_join(CCLE_preds)
+
+source(here('functions.R'))
 ```
 
 ```{r, include = F}
@@ -61,9 +63,11 @@ To provide context for the predictions from your data, all of the following plot
 To help pick out potentially interesting compounds from the model predictions, we've sorted the predictions using four different methods:
 
 * The compound is predicted to have minimal effects on cell viability.
-* The compound is predicted to have high effects on cell viability at all concentrations.
+* The compound is predicted to have high average effect on cell viability.
 * The compound is predicted to show a wide range of effect on cell viability.
-* The compound is predicted to have a substantially different effect as compared to the CCLE cell line set.
+* The compound is predicted to vary from the CCLE average effect.
+
+These categories are not mutually exclusive, so it's possible that a single compound will be present in multiple compound sets. Otherwise, the results are displayed as a set of small multiple graphs with the compound name in the title section.
 
 ```{r, include = F}
 summary_results = predictions %>% 
@@ -71,18 +75,6 @@ summary_results = predictions %>%
 	summarise(mean_via = mean(predicted_viability),
 						CCLE_diff = abs(mean(predicted_viability - mean_via)),
 						range_via = max(predicted_viability) - min(predicted_viability))
-
-plot_pred_set <- function(data_set) {
-	ggplot(data_set, aes(x=log10(concentration_M),y=mean_via)) +
-		geom_ribbon(aes(ymin=lower_bound,ymax=upper_bound), alpha=0.25) +
-		geom_line(alpha=0.75) +
-		geom_line(aes(x=log10(concentration_M),y=predicted_viability), color = "blue") +
-		geom_point(aes(x=log10(concentration_M),y=predicted_viability), color = "blue") +
-		ylim(c(0,NA)) +
-		labs(x = "Compound Concentration (Log 10 M)",y = "Predicted Viability") +
-		BerginskiRMisc::theme_berginski() +
-		facet_grid(cols = vars(drug))
-}
 ```
 
 ## Minimal Effects
