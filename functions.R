@@ -33,7 +33,6 @@ plot_pred_set <- function(data_set) {
 }
 
 make_predictions <- function(processed_RNAseq) {
-	
 	if (shiny::isRunning()) {
 		progress <- shiny::Progress$new()
 		# Make sure it closes when we exit this reactive, even if there's an error
@@ -46,8 +45,6 @@ make_predictions <- function(processed_RNAseq) {
 	
 	klaeger_wide = read_rds(here('data/klaeger_wide.rds')) %>%
 		filter(concentration_M != 0)
-	
-	rand_forest_model = read_rds(here('data/final_model_500feat_100trees.rds'))
 	
 	if (shiny::isRunning()) {
 		progress$inc(3/4, detail = "Making Model Predictions")
@@ -67,7 +64,7 @@ make_predictions <- function(processed_RNAseq) {
 		slice(rep(1:n(), each = dim(klaeger_wide)[1])) %>%
 		bind_cols(klaeger_wide)
 	
-	model_predictions = predict(rand_forest_model, 
+	model_predictions = predict(read_rds(here('data/final_model_500feat_100trees.rds')), 
 															model_data %>% mutate(klaeger_conc = NA, imputed_viability = NA, depmap_id = NA))
 	model_predictions$drug = model_data$drug
 	model_predictions$concentration_M = model_data$concentration_M
@@ -77,7 +74,7 @@ make_predictions <- function(processed_RNAseq) {
 		mutate(predicted_viability = signif(predicted_viability,3)) %>%
 		select(drug, concentration_M, everything())
 	
-	rm(rand_forest_model)
+	# rm(rand_forest_model)
 	rm(klaeger_wide)
 	rm(average_exp_vals)
 	gc()
