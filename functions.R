@@ -33,22 +33,10 @@ plot_pred_set <- function(data_set) {
 }
 
 make_predictions <- function(processed_RNAseq) {
-	if (shiny::isRunning()) {
-		progress <- shiny::Progress$new()
-		# Make sure it closes when we exit this reactive, even if there's an error
-		on.exit(progress$close())
-		
-		progress$inc(2/4, detail = "Loading Model")
-	}
-	
 	average_exp_vals = read_rds(here('data/average_model_exp_vals.rds'))
 	
 	klaeger_wide = read_rds(here('data/klaeger_wide.rds')) %>%
 		filter(concentration_M != 0)
-	
-	if (shiny::isRunning()) {
-		progress$inc(3/4, detail = "Making Model Predictions")
-	}
 	
 	model_data = processed_RNAseq %>% 
 		mutate(model_feature = paste0("exp_",hgnc_symbol), 
@@ -74,7 +62,6 @@ make_predictions <- function(processed_RNAseq) {
 		mutate(predicted_viability = signif(predicted_viability,3)) %>%
 		select(drug, concentration_M, everything())
 	
-	# rm(rand_forest_model)
 	rm(klaeger_wide)
 	rm(average_exp_vals)
 	gc()

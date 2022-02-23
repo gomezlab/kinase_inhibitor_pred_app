@@ -250,20 +250,32 @@ server <- function(input, output, session) {
 	output$RNAseq_qc_text <- renderText({
 		if (is.null(global_data$model_predictions)) return()
 		
-		paste0("Your dataset contains ", dim(global_data$RNAseq)[1], ' of the 110 genes included in the model. 
-					 For every gene missing, the average value from the original model data has been substituted.')
+		if (dim(global_data$RNAseq)[1] == 110) {
+			return(paste0("Your dataset contains ", dim(global_data$RNAseq)[1], ' of the 110 genes included in the model.'))
+		} else {
+			return(paste0("Your dataset contains ", dim(global_data$RNAseq)[1], ' of the 110 genes included in the model. 
+					 For every gene missing, the average value from the original model data has been substituted.'))
+		}
 	})
 	
 	run_model <- reactive({
 		if (is.null(global_data$model_id)) return()
 		
+		progress <- shiny::Progress$new()
+		# Make sure it closes when we exit this reactive, even if there's an error
+		on.exit(progress$close())
+		
+		progress$inc(2/3, detail = "Loading Model/Making Predictions")
+		
 		global_data$model_predictions = make_predictions(global_data$RNAseq)
+		
+		progress$close()
 		
 		progress <- shiny::Progress$new()
 		# Make sure it closes when we exit this reactive, even if there's an error
 		on.exit(progress$close())
 		
-		progress$inc(4/4, detail = "Building Results Report")
+		progress$inc(3/3, detail = "Building Results Report")
 		
 		render('build_inhibitor_overview.Rmd', 
 					 output_file = here('www/',paste0("kinase_inhibitor_summary_",global_data$model_id,".docx")), 
