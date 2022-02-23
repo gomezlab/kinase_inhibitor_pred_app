@@ -3,7 +3,6 @@ library(tidyverse)
 library(dqshiny)
 library(here)
 library(tidymodels)
-library(reactable)
 library(shinyjs)
 library(digest)
 library(rmarkdown)
@@ -82,7 +81,7 @@ ui <- fluidPage(
 												more background on understanding your results."))
 					),
 					fluidRow(
-						column(12,textOutput("RNAseq_qc_text"))
+						column(12,htmlOutput("RNAseq_qc_text"))
 					),
 					
 					hr(),
@@ -247,17 +246,27 @@ server <- function(input, output, session) {
 			left_join(CCLE_preds)
 	})
 	
-	output$RNAseq_qc_text <- renderText({
+	output$RNAseq_qc_text <- renderUI({
 		if (is.null(global_data$model_predictions)) return()
 		
+		return_text = ""
+		
 		if (dim(global_data$RNAseq)[1] == 110) {
-			return(paste0("Your dataset contains ", dim(global_data$RNAseq)[1], ' of the 110 genes included in the model.'))
+			return_text = tagList("Your dataset contains ", dim(global_data$RNAseq)[1], ' of the 110 genes included in the model. ')
 		} else {
-			return(paste0("Your dataset contains ", dim(global_data$RNAseq)[1], ' of the 110 genes included in the model. 
-					 For every gene missing, the average value from the original model data has been substituted.'))
+			return_text = tagList("Your dataset contains ", dim(global_data$RNAseq)[1], ' of the 110 genes included in the model. 
+					 For every gene missing, the average value from the original model data has been substituted. ')
 		}
+		
+		report_url = paste0("kinase_inhibitor_summary_", global_data$model_id, ".nb.html");
+		
+		return_text = tagList(return_text, "For reference, the system assigned your data the ID: ", global_data$model_id, ". In ",
+												 "addition to the download options at the botom of this document, you can also access this report ", 
+												 tags$a(href=report_url, "here", .noWS = "outside"), ".")
+		
+		return(return_text)
 	})
-	
+
 	run_model <- reactive({
 		if (is.null(global_data$model_id)) return()
 		
@@ -279,6 +288,11 @@ server <- function(input, output, session) {
 		
 		render('build_inhibitor_overview.Rmd', 
 					 output_file = here('www/',paste0("kinase_inhibitor_summary_",global_data$model_id,".docx")), 
+					 params = list(predictions = global_data$model_predictions, RNAseq_data = global_data$RNAseq, model_id = global_data$model_id))
+		
+		render('build_inhibitor_overview.Rmd', 
+					 output_file = here('www/',paste0("kinase_inhibitor_summary_",global_data$model_id,".html")),
+					 output_format = "html_notebook",
 					 params = list(predictions = global_data$model_predictions, RNAseq_data = global_data$RNAseq, model_id = global_data$model_id))
 		
 		shinyjs::show("results")
