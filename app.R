@@ -41,7 +41,8 @@ ui <- fluidPage(
 			
 			tags$h2("Option 1: Upload RNAseq Results:"),
 			fileInput("RNAseq_file", "Please select your quant.sf file from salmon",
-								multiple = TRUE),
+								multiple = FALSE),
+			actionButton("submit_upload_seq", "Submit RNAseq Data", onClick = "in_process.style.display = 'block'; instructions.style.display = 'hide'; "),
 			tags$hr(),
 			
 			tags$h2("Option 2: Specify a GEO ID:"),
@@ -51,8 +52,8 @@ ui <- fluidPage(
 												 placeholder = "Start Typing to Find Your GEO ID",
 												 max_options = 10),
 			
-			actionButton("submit_geo", "Submit GEO ID"),
-			actionButton("submit_random_geo", "Submit Random GEO ID")
+			actionButton("submit_geo", "Submit GEO ID", onClick = "in_process.style.display = 'block'; instructions.style.display = 'hide'; "),
+			actionButton("submit_random_geo", "Submit Random GEO ID", onClick = "in_process.style.display = 'block'; instructions.style.display = 'hide'; ")
 		),
 		
 		mainPanel(
@@ -72,6 +73,16 @@ ui <- fluidPage(
 							 
 							 tags$p("The processing should take less than a minute and progress indicators will appear in the bottom 
 							 			 corner."),
+			),
+			
+			div(id = 'in_process',
+					fluidRow(
+						column(12,
+									 h2("Data Set Submission Success"),
+									 p("The server has recieved your data and is in the queue to be processed. Once processing has begun, progress 
+									 	notifications will appear in the bottom right hand corner. Once processing has begun it typically takes about 45 
+									 	seconds to produce prediction results."))
+					)
 			),
 			
 			div(id = 'results',
@@ -157,7 +168,7 @@ ui <- fluidPage(
 # Define server logic required to draw a histogram
 server <- function(input, output, session) {
 	
-	#Hide download buttons until after model has run
+	shinyjs::hide("in_process")
 	shinyjs::hide("results")
 	
 	global_data <- reactiveValues(RNAseq = NULL,
@@ -169,15 +180,15 @@ server <- function(input, output, session) {
 	# RNAseq Input Processing
 	##############################################################################
 	
-	observeEvent(input$RNAseq_file, {
+	observeEvent(input$submit_upload_seq, {
+		shinyjs::hide("instructions")
+		shinyjs::show("in_process")
 		progress <- shiny::Progress$new()
 		# Make sure it closes when we exit this reactive, even if there's an error
 		on.exit(progress$close())
 		
 		progress$inc(1/3, detail = "Processing RNAseq Data")
-		
-		hide("instructions")
-		
+
 		TPM_data = read_delim(input$RNAseq_file$datapath, delim = "\t") %>%
 			convert_salmon_to_HGNC_TPM()
 		
@@ -188,13 +199,14 @@ server <- function(input, output, session) {
 	})
 	
 	observeEvent(input$submit_geo, {
+		shinyjs::hide("instructions")
+		shinyjs::show("in_process")
+		
 		progress <- shiny::Progress$new()
 		# Make sure it closes when we exit this reactive, even if there's an error
 		on.exit(progress$close())
 		
 		progress$inc(1/3, detail = "Processing GEO Data")
-		
-		hide("instructions")
 		
 		archs_data = H5Fopen(here('data/ARCHS_subset/matt_model_matrix.h5'))
 		
@@ -204,6 +216,9 @@ server <- function(input, output, session) {
 	})
 	
 	observeEvent(input$submit_random_geo, {
+		shinyjs::hide("instructions")
+		shinyjs::show("in_process")
+		
 		random_geo_id = sample(all_geo_archs_ids,1)
 		
 		update_autocomplete_input(session, "GEO_ARCHS_ID", value = random_geo_id)
@@ -213,8 +228,6 @@ server <- function(input, output, session) {
 		on.exit(progress$close())
 		
 		progress$inc(1/3, detail = "Processing GEO Data")
-		
-		hide("instructions")
 		
 		archs_data = H5Fopen(here('data/ARCHS_subset/matt_model_matrix.h5'))
 		
@@ -295,6 +308,7 @@ server <- function(input, output, session) {
 					 output_format = "html_notebook",
 					 params = list(predictions = global_data$model_predictions, RNAseq_data = global_data$RNAseq, model_id = global_data$model_id))
 		
+		shinyjs::hide("in_process")
 		shinyjs::show("results")
 	})
 	
