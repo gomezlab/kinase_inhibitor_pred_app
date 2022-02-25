@@ -2,6 +2,8 @@
 
 This repository contains the code related to the Kinase Inhibitor Prediction Application. The application was built using the R shiny framework and uses a model developed in a seperate [project](https://github.com/gomezlab/PRISM_perturbations). You can access the application through our [website](FINAL URL).
 
+![screenshot of kinase inhibitor pred app](application_screenshot.png)
+
 ## Running the Application Locally
 
 In addition to the above website, the application can also be run on your personal computer. After cloning the repository you will need to download two additional files that are too large to store on github:
