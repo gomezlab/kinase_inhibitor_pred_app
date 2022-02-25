@@ -10,4 +10,5 @@ data/uploads
 data/*.sf
 data/ARCHS_subset
 
-www
+www/*
+!www/kinase_inhibitor_summary_sample.nb.html
