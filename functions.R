@@ -1,4 +1,7 @@
 convert_salmon_to_HGNC_TPM <- function(transript_data) {
+	
+	transcript_data_TPM = c()
+	
 	#look for ENST in the name column
 	if (mean(str_detect(transript_data$Name,"ENST")) > 0.95) {
 		#Check for the version dot in the Name column, if there, remove it with separate
@@ -6,18 +9,24 @@ convert_salmon_to_HGNC_TPM <- function(transript_data) {
 			transript_data = transript_data %>% separate(Name, into = c("Name",NA), sep = "\\.")
 		}
 		
-		ENST_to_hgnc = read_csv(here('data/model_expression_genes.csv'))
+		ENST_to_hgnc = read_csv(here('data/model_expression_genes_ENST.csv'))
 		
-		transript_data = transript_data %>% 
+		transcript_data_TPM = transript_data %>% 
 			filter(Name %in% ENST_to_hgnc$ensembl_transcript_id) %>% 
 			left_join(ENST_to_hgnc, by = c("Name"="ensembl_transcript_id")) %>% 
 			group_by(hgnc_symbol) %>% 
 			summarise(TPM = sum(TPM))
+	} else if (mean(str_detect(transript_data$Name, "^NM_")) > 0.5) {
+		RefSeq_to_hgnc = read_csv(here('data/model_expression_genes_refseq.csv'))
 		
-		return(transript_data)
-	} else {
-		
+		transcript_data_TPM = transript_data %>% 
+			filter(Name %in% RefSeq_to_hgnc$refseq_mrna) %>% 
+			left_join(RefSeq_to_hgnc, by = c("Name"="refseq_mrna")) %>% 
+			group_by(hgnc_symbol) %>% 
+			summarise(TPM = sum(TPM))
 	}
+	
+	return(transcript_data_TPM)
 }
 
 plot_pred_set <- function(data_set) {

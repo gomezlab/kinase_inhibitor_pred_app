@@ -12,3 +12,4 @@ data/ARCHS_subset
 
 www/*
 !www/kinase_inhibitor_summary_sample.nb.html
+!www/extra.js
