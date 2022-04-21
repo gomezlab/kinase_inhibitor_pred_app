@@ -71,7 +71,7 @@ ui <- fluidPage(
 							 
 							 tags$p("There are currently two ways to input your RNAseq data to make kinase inhibitor cell 
 							 				 viability predictions. The first is to upload the \"quant.sf\" file from the salmon (or compatible) 
-							 				 read aligner. Two transcript databases are supported, ensembl (ENST identifiers) and RefSef 
+							 				 read aligner. Two transcript databases are supported, ensembl (ENST identifiers) and RefSeq 
 							 				 (NM_ and NR_ identifiers). Please get in touch if you would like to see a different type of processed 
 							 				 RNAseq format supported."),
 							 
