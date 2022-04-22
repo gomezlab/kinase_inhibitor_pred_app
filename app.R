@@ -75,6 +75,9 @@ ui <- fluidPage(
 							 				 (NM_ and NR_ identifiers). Please get in touch if you would like to see a different type of processed 
 							 				 RNAseq format supported."),
 							 
+							 tags$p("You can download a sample salmon output ", a(href="sample_quant.sf","file"), " if you would like to 
+											 test the server or see what the file looks like."),
+							 
 							 tags$p("Alternatively, you can input a GEO database ID. This input method is enabled by the ", 
 							 			 a(href="https://maayanlab.cloud/archs4/","ARCHS project"),"."),
 							 
@@ -95,16 +98,16 @@ ui <- fluidPage(
 						column(12,
 									 h2("Data Set Submission Success"),
 									 p("The server has recieved your data and is in the queue to be processed. Once processing has begun, progress 
-									 	notifications will appear in the bottom right hand corner and it typically takes about 45 
-									 	seconds to produce prediction results."))
+							 			 notifications will appear in the bottom right hand corner and it typically takes about 45 
+							 			 seconds to produce prediction results."))
 					)
 			),
 			
 			div(id = 'results',
 					fluidRow(
 						column(12,p("The model has finished running and a summary of your results follows. You will find two buttons
-												at the bottom of this section to download a CSV file with the model predictions and a report with
-												more background on understanding your results."))
+							 			 at the bottom of this section to download a CSV file with the model predictions and a report with
+							 			 more background on understanding your results."))
 					),
 					fluidRow(
 						column(12,htmlOutput("RNAseq_qc_text"))
@@ -117,9 +120,9 @@ ui <- fluidPage(
 									 h2("Compound Viability Predictions"),
 									 
 									 p("To provide context for the predictions from your data, all of the following plots also show a summary
-										of the predictions from the cell lines in the CCLE. The gray shaded region shows the range (95% coverage)
-										of predictions for that compound, while the black line shows the average prediction. Predictions for your
-										data appear as a blue line."),
+							 			 of the predictions from the cell lines in the CCLE. The gray shaded region shows the range (95% coverage)
+							 			 of predictions for that compound, while the black line shows the average prediction. Predictions for your
+							 			 data appear as a blue line."),
 									 
 									 p("To help pick out potentially interesting compounds from the model predictions, we've sorted the 
 										predictions using four different methods:"),
@@ -132,8 +135,8 @@ ui <- fluidPage(
 									 ),
 									 
 									 p("These categories are not mutually exclusive, so it's possible that a single compound will be present in 
-										multiple compound sets. Otherwise, the results are displayed as a set of small multiple graphs with the 
-										compound name in the title section."),
+							 			 multiple compound sets. Otherwise, the results are displayed as a set of small multiple graphs with the 
+							 			 compound name in the title section."),
 									 
 									 tags$div(
 									 	HTML(paste("Your results are appear in ", tags$span(style="color:blue", "blue"), 
