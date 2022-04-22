@@ -152,14 +152,14 @@ ui <- fluidPage(
 						column(6,
 									 h3("Minimal Predicted Effect"),plotOutput("minimal_eff_preds")),
 						column(6,
-									 h3("High Predicted Effect"),plotOutput("high_eff_preds"))
+									 h3("Highest Predicted Effect"),plotOutput("high_eff_preds"))
 					),
 					
 					fluidRow(
 						column(6,
-									 h3("High Range of Predicted Effect"),plotOutput("high_range_preds")),
+									 h3("Highest Range of Predicted Effect"),plotOutput("high_range_preds")),
 						column(6,
-									 h3("Large Difference with CCLE Lines"),plotOutput("ccle_diff_preds"))
+									 h3("Largest Difference with CCLE Lines"),plotOutput("ccle_diff_preds"))
 					),
 					
 					hr(),
