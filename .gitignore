@@ -14,3 +14,4 @@ www/*
 !www/kinase_inhibitor_summary_sample.nb.html
 !www/extra.js
 !www/sample_quant.sf
+!www/favicon*
