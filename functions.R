@@ -61,7 +61,7 @@ make_predictions <- function(processed_RNAseq) {
 		slice(rep(1:n(), each = dim(klaeger_wide)[1])) %>%
 		bind_cols(klaeger_wide)
 	
-	model_predictions = predict(read_rds(here('data/final_model_500feat_100trees.rds')), 
+	model_predictions = predict(read_rds(here('data/model_only_500feat_100trees.rds')), 
 															model_data %>% mutate(klaeger_conc = NA, imputed_viability = NA, depmap_id = NA))
 	model_predictions$drug = model_data$drug
 	model_predictions$concentration_M = model_data$concentration_M
