@@ -15,6 +15,7 @@ dir.create(here('www'), showWarnings = F)
 
 all_geo_archs_ids = read_rds(here('data/ARCHS_GEO_IDs.rds'))
 CCLE_preds = read_rds(here('data/CCLE_prediction_summary.rds'))
+prediction_model = read_rds(here('data/model_only_500feat_100trees.rds'))
 
 source(here('functions.R'))
 
@@ -319,7 +320,7 @@ server <- function(input, output, session) {
 		
 		progress$inc(2/3, detail = "Loading Model/Making Predictions")
 		
-		global_data$model_predictions = make_predictions(global_data$RNAseq)
+		global_data$model_predictions = make_predictions(global_data$RNAseq, prediction_model)
 		
 		progress$close()
 		
