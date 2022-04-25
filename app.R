@@ -75,11 +75,11 @@ ui <- fluidPage(
 							 				 (NM_ and NR_ identifiers). Please get in touch if you would like to see a different type of processed 
 							 				 RNAseq format supported."),
 							 
-							 tags$p("You can download a sample salmon output ", a(href="sample_quant.sf","file"), " if you would like to 
+							 tags$p("You can download a sample salmon output ", a(href="sample_quant.sf","file", .noWS = "outside"), " if you would like to 
 											 test the server or see what the file looks like."),
 							 
 							 tags$p("Alternatively, you can input a GEO database ID. This input method is enabled by the ", 
-							 			 a(href="https://maayanlab.cloud/archs4/","ARCHS project"),"."),
+							 			 a(href="https://maayanlab.cloud/archs4/","ARCHS project", .noWS = "outside"),"."),
 							 
 							 tags$h3("Processing Steps"),
 							 
