@@ -41,7 +41,7 @@ plot_pred_set <- function(data_set) {
 		facet_grid(cols = vars(drug))
 }
 
-make_predictions <- function(processed_RNAseq,prediction_model) {
+make_predictions <- function(processed_RNAseq) {
 	average_exp_vals = read_rds(here('data/average_model_exp_vals.rds'))
 	
 	klaeger_wide = read_rds(here('data/klaeger_wide.rds')) %>%
@@ -61,7 +61,7 @@ make_predictions <- function(processed_RNAseq,prediction_model) {
 		slice(rep(1:n(), each = dim(klaeger_wide)[1])) %>%
 		bind_cols(klaeger_wide)
 	
-	model_predictions = predict(prediction_model, 
+	model_predictions = predict(read_rds(here('data/model_only_500feat_100trees.rds')), 
 															model_data %>% mutate(klaeger_conc = NA, imputed_viability = NA, depmap_id = NA))
 	model_predictions$drug = model_data$drug
 	model_predictions$concentration_M = model_data$concentration_M
