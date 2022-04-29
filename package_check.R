@@ -11,14 +11,14 @@ if("pacman" %in% rownames(installed.packages()) == FALSE) {
 
 library(pacman)
 
-p_load(shiny)
-p_load(tidyverse)
-p_load(here)
-p_load(tidymodels)
-p_load(shinyjs)
 p_load(digest)
-p_load(rmarkdown)
+p_load(here)
 p_load(rhdf5)
+p_load(rmarkdown)
+p_load(shiny)
+p_load(shinyjs)
+p_load(tidymodels)
+p_load(tidyverse)
 
 p_load_gh('mbergins/BerginskiRMisc')
 p_load_gh("daqana/dqshiny")
