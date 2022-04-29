@@ -6,6 +6,7 @@
 *.docx
 
 data/final_model_500feat_100trees.rds
+data/model_only_500feat_100trees.rds
 data/uploads
 data/*.sf
 data/ARCHS_subset

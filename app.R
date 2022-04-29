@@ -47,7 +47,7 @@ ui <- fluidPage(
 		sidebarPanel(
 			
 			tags$h2("Option 1: Upload RNAseq Results"),
-			fileInput("RNAseq_file", "Please select your quant.sf file from salmon",
+			fileInput("RNAseq_file", "Please a human quant.sf file from salmon",
 								multiple = FALSE),
 			actionButton("submit_upload_seq", "Submit RNAseq Data", onClick = "button_reaction()"),
 			tags$hr(),
@@ -71,15 +71,24 @@ ui <- fluidPage(
 							 
 							 tags$p("There are currently two ways to input your RNAseq data to make kinase inhibitor cell 
 							 				 viability predictions. The first is to upload the \"quant.sf\" file from the salmon (or compatible) 
-							 				 read aligner. Two transcript databases are supported, ensembl (ENST identifiers) and RefSeq 
+							 				 read aligner, while the second is to specify a GEO ID for a human RNAseq data sample."),
+							 
+							 tags$h4("Salmon Upload"),
+							 
+							 tags$p("Two transcript databases are supported, ensembl (ENST identifiers) and RefSeq 
 							 				 (NM_ and NR_ identifiers). Please get in touch if you would like to see a different type of processed 
-							 				 RNAseq format supported."),
+							 				 RNAseq format supported. The server is designed to only work on a single RNAseq data set at a time, if you have 
+							 			   a substantially larger set of RNAseq profiles for which you would like predictions, please get in 
+							 			   touch with me (matthew dot berginski at gmail dot com)."),
 							 
 							 tags$p("You can download a sample salmon output ", a(href="sample_quant.sf","file", .noWS = "outside"), " if you would like to 
 											 test the server or see what the file looks like."),
 							 
+							 tags$h4("GEO ID"),
+							 
 							 tags$p("Alternatively, you can input a GEO database ID. This input method is enabled by the ", 
-							 			 a(href="https://maayanlab.cloud/archs4/","ARCHS project", .noWS = "outside"),"."),
+							 			 a(href="https://maayanlab.cloud/archs4/","ARCHS project", .noWS = "outside"),". As you start 
+							 			 typing the you will see a list of GEO IDs that are available for processing."),
 							 
 							 tags$h3("Processing Steps"),
 							 
