@@ -112,6 +112,14 @@ ui <- fluidPage(
 					)
 			),
 			
+			div(id = 'submission_failure',
+					fluidRow(
+						column(12,
+									 h2("Data Set Submission Problem"),
+									 p("There is a problem with the data set or GEO ID you have submitted to the server, please try again."))
+					)
+			),
+			
 			div(id = 'results',
 					fluidRow(
 						column(12,p("The model has finished running and a summary of your results follows. You will find two buttons
@@ -209,14 +217,17 @@ server <- function(input, output, session) {
 	global_data <- reactiveValues(RNAseq = NULL,
 																model_predictions = NULL,
 																model_id = NULL,
-																model_pred_summary = NULL)
+																model_pred_summary = NULL,
+																GEO_id = NULL)
 	
 	##############################################################################
 	# RNAseq Input Processing
 	##############################################################################
 	
 	observeEvent(input$submit_upload_seq, {
+		shinyjs::hide("results")
 		shinyjs::hide("instructions")
+		shinyjs::hide('submission_failure')
 		shinyjs::show("in_process")
 		progress <- shiny::Progress$new()
 		# Make sure it closes when we exit this reactive, even if there's an error
@@ -230,11 +241,14 @@ server <- function(input, output, session) {
 		global_data$model_id = substr(digest(TPM_data), 1, 6)
 		
 		file.copy(input$RNAseq_file$datapath, here('data/uploads',global_data$model_id))
+		global_data$GEO_id = NULL
 		global_data$RNAseq = TPM_data
 	})
 	
 	observeEvent(input$submit_geo, {
+		shinyjs::hide("results")
 		shinyjs::hide("instructions")
+		shinyjs::hide('submission_failure')
 		shinyjs::show("in_process")
 		
 		progress <- shiny::Progress$new()
@@ -247,11 +261,23 @@ server <- function(input, output, session) {
 		
 		GEO_col = which(archs_data$meta$samples$geo_accession == input$GEO_ARCHS_ID)
 		
-		global_data$RNAseq = data.frame(hgnc_symbol = archs_data$meta$genes$genes, TPM = archs_data$data$expression[GEO_col,])
+		if (length(GEO_col) == 0) {
+			shinyjs::hide('in_process')
+			shinyjs::show('submission_failure')
+			
+			shinyjs::enable("submit_random_geo")
+			shinyjs::enable("submit_geo")
+			shinyjs::enable("submit_upload_seq")
+		} else {
+			global_data$GEO_id = input$GEO_ARCHS_ID
+			global_data$RNAseq = data.frame(hgnc_symbol = archs_data$meta$genes$genes, TPM = archs_data$data$expression[GEO_col,])
+		}
 	})
 	
 	observeEvent(input$submit_random_geo, {
+		shinyjs::hide("results")
 		shinyjs::hide("instructions")
+		shinyjs::hide('submission_failure')
 		shinyjs::show("in_process")
 		
 		random_geo_id = sample(all_geo_archs_ids,1)
@@ -268,6 +294,7 @@ server <- function(input, output, session) {
 		
 		GEO_col = which(archs_data$meta$samples$geo_accession == random_geo_id)
 		
+		global_data$GEO_id = random_geo_id
 		global_data$RNAseq = data.frame(hgnc_symbol = archs_data$meta$genes$genes, TPM = archs_data$data$expression[GEO_col,])
 	})
 	
@@ -338,11 +365,16 @@ server <- function(input, output, session) {
 		
 		progress$inc(3/3, detail = "Building Results Report")
 		
-		render('build_inhibitor_overview.Rmd', 
-					 output_file = here('www/',paste0("kinase_inhibitor_summary_",global_data$model_id,".docx")), 
-					 params = list(predictions = global_data$model_predictions, RNAseq_data = global_data$RNAseq, model_id = global_data$model_id))
+		print(global_data$GEO_id)	
 		
-		render('build_inhibitor_overview.Rmd', 
+		render('build_inhibitor_overview.Rmd',
+					 output_file = here('www/',paste0("kinase_inhibitor_summary_",global_data$model_id,".docx")),
+					 params = list(predictions = global_data$model_predictions, 
+					 							RNAseq_data = global_data$RNAseq, 
+					 							model_id = global_data$model_id,
+					 							GEO_id = global_data$GEO_id))
+
+		render('build_inhibitor_overview.Rmd',
 					 output_file = here('www/',paste0("kinase_inhibitor_summary_",global_data$model_id,".html")),
 					 output_format = "html_notebook",
 					 params = list(predictions = global_data$model_predictions, RNAseq_data = global_data$RNAseq, model_id = global_data$model_id))

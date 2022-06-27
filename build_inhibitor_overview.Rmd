@@ -7,27 +7,31 @@ params:
   predictions: NA
   RNAseq_data: NA
   model_id: NA
+  GEO_id: NULL
 ---
 
 ```{r setup, include=FALSE}
 library(tidyverse)
+library(here)
+library(digest)
+
+source(here('functions.R'))
 
 knitr::opts_chunk$set(echo = TRUE)
 
-if (params$RNAseq_data == "NA") {
-	source(here('functions.R'))
+if (all(params$RNAseq_data == "NA")) {
 	RNAseq_data = read_delim('data/quant.sf') %>% convert_salmon_to_HGNC_TPM()
 } else {
 	RNAseq_data = params$RNAseq_data
 }
 
-if (params$predictions == "NA") {
+if (all(params$predictions[1] == "NA")) {
 	predictions = make_predictions(RNAseq_data)
 } else {
 	predictions = params$predictions
 }
 
-if (params$model_id == "NA") {
+if (all(params$model_id[1] == "NA")) {
 	model_id = substr(digest(RNAseq_data), 1, 6)
 } else {
 	model_id = params$model_id
@@ -37,8 +41,6 @@ CCLE_preds = read_rds(here('data/CCLE_prediction_summary.rds'))
 
 predictions = predictions %>%
 	left_join(CCLE_preds)
-
-source(here('functions.R'))
 ```
 
 ```{r, include = F}
@@ -51,10 +53,11 @@ if (dim(RNAseq_data)[1] > 100) {
 } else {
 	RNAseq_text = paste0("The data you submitted has ", dim(RNAseq_data)[1], " out of the 110 genes included in the model. The system wasn't able to find a majority of the genes expected. All genes missing from your data were filled with the average value from the cell lines in the CCLE. The following predictions are not customized for your data.  If you think this is an error, please get in touch with me through github (https://github.com/mbergins/kinase_inhibitor_pred_app).")
 }
-
 ```
 
 This report summarizes the cell viability predictions for your data set. `r RNAseq_text` For reference, the system assigned your data the ID: `r model_id`.
+
+`r ifelse(all(params$GEO_id[1] == "NULL"),"",paste0("Your data was collected from GEO ID: ",params$GEO_id[1],"."))`
 
 # Cell Viability Predictions
 
