@@ -338,7 +338,7 @@ server <- function(input, output, session) {
 					 For every gene missing, the average value from the original model data has been substituted. ')
 		}
 		
-		report_url = paste0("kinase_inhibitor_summary_", global_data$model_id, ".nb.html");
+		report_url = paste0("kinase_inhibitor_summary_", global_data$model_id, ".html");
 		
 		return_text = tagList(return_text, "For reference, the system assigned your data the ID: ", global_data$model_id, ". In ",
 													"addition to the download options at the botom of this document, you can also access this report ", 
