@@ -211,6 +211,7 @@ ui <- fluidPage(
 # Define server logic required to draw a histogram
 server <- function(input, output, session) {
 	
+	shinyjs::hide("submission_failure")
 	shinyjs::hide("in_process")
 	shinyjs::hide("results")
 	
