@@ -365,19 +365,14 @@ server <- function(input, output, session) {
 		
 		progress$inc(3/3, detail = "Building Results Report")
 		
-		print(global_data$GEO_id)	
-		
 		render('build_inhibitor_overview.Rmd',
-					 output_file = here('www/',paste0("kinase_inhibitor_summary_",global_data$model_id,".docx")),
-					 params = list(predictions = global_data$model_predictions, 
-					 							RNAseq_data = global_data$RNAseq, 
+					 output_file = c(here('www/',paste0("kinase_inhibitor_summary_",global_data$model_id,".docx")),
+					 								here('www/',paste0("kinase_inhibitor_summary_",global_data$model_id,".html"))),
+					 output_format = c('word_document','html_document'),
+					 params = list(predictions = global_data$model_predictions,
+					 							RNAseq_data = global_data$RNAseq,
 					 							model_id = global_data$model_id,
 					 							GEO_id = global_data$GEO_id))
-
-		render('build_inhibitor_overview.Rmd',
-					 output_file = here('www/',paste0("kinase_inhibitor_summary_",global_data$model_id,".html")),
-					 output_format = "html_notebook",
-					 params = list(predictions = global_data$model_predictions, RNAseq_data = global_data$RNAseq, model_id = global_data$model_id))
 		
 		shinyjs::hide("in_process")
 		shinyjs::show("results")
