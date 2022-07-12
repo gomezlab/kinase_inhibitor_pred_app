@@ -342,7 +342,7 @@ server <- function(input, output, session) {
 		
 		return_text = tagList(return_text, "For reference, the system assigned your data the ID: ", global_data$model_id, ". In ",
 													"addition to the download options at the botom of this document, you can also access this report ", 
-													tags$a(href=report_url, "here", .noWS = "outside"), ".")
+													tags$a(href=report_url, "here", .noWS = "outside", target="_blank"), ".")
 		
 		return(return_text)
 	})
