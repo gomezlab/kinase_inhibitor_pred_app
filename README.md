@@ -1,6 +1,6 @@
 # Kinase Inhibitor Prediction Application
 
-This repository contains the code related to the Kinase Inhibitor Prediction Application. The application was built using the R shiny framework and uses a model developed in a seperate [project](https://github.com/gomezlab/PRISM_perturbations). You can access the application through our [temporary URL](shiny.testing.berginski.com).
+This repository contains the code related to the Kinase Inhibitor Prediction Application. The application was built using the R shiny framework and uses a model developed in a seperate [project](https://github.com/gomezlab/PRISM_perturbations). You can access the application [here](http://kipred.gomezlab.org).
 
 ![screenshot of kinase inhibitor pred app](application_screenshot.png)
 
