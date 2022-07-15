@@ -1,4 +1,4 @@
-# Kinase Inhibitor Prediction Application
+# Kinase Inhibitor Cell Viability Prediction Application
 
 This repository contains the code related to the Kinase Inhibitor Prediction Application. The application was built using the R shiny framework and uses a model developed in a seperate [project](https://github.com/gomezlab/PRISM_perturbations). You can access the application [here](https://kipred.gomezlab.org/).
 
