@@ -47,7 +47,7 @@ ui <- fluidPage(
 		sidebarPanel(
 			
 			tags$h2("Option 1: Upload RNA-seq Results"),
-			fileInput("RNA-seq_file", "Upload a human quant.sf file from salmon",
+			fileInput("RNAseq_file", "Upload a human quant.sf file from salmon",
 								multiple = FALSE),
 			actionButton("submit_upload_seq", "Submit RNA-seq Data", onClick = "button_reaction()"),
 			tags$hr(),
